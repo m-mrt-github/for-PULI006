@@ -20,11 +20,12 @@ var fR = 60;
 var titleXY = 10;
 var titleSize = 20;
 var titleWidth = 0;
-var novelNumber = 2;
+var novelNumber = 3;
 var novelInfo = [
     ['デューク', '江國香織', 'duke.txt'],
     ['スイート・ラバーズ', '江國香織', 'sweetLovers.txt'],
-    ['なぞの青年', '星新一', 'mysteriousBoy.txt']
+    ['なぞの青年', '星新一', 'mysteriousBoy.txt'],
+    ['アグアスカリエンテス', '井ノ森典恵', 'agua.txt']
 ];
 
 //BGMの変数
