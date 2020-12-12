@@ -3,7 +3,6 @@
 
 
 
-
 //--------------------------------------------
 //変数設定
 //--------------------------------------------
@@ -13,24 +12,26 @@ var novelTitle;
 //画面サイズとフレームレートの変数
 var Width; //iPhone8は414
 var Height; //iPhone8は736
-var screenMargin = 80; //文節が表示されない画面枠マージンの値
+var screenMargin = 10; //文節が表示されない画面枠マージンの値
+var screenMarginRL = 13;
+var screenMarginTB = 50;
 var fR = 60;
 
 //タイトル表示の変数
-var titleXY = 10;
+var titleXY = 5;
+var autherXY = 5;
 var titleSize = 20;
 var titleWidth = 0;
-var novelNumber = 3;
+var novelNumber = 2;
 var novelInfo = [
     ['デューク', '江國香織', 'duke.txt'],
-    ['スイート・ラバーズ', '江國香織', 'sweetLovers.txt'],
-    ['なぞの青年', '星新一', 'mysteriousBoy.txt'],
+    ['スイート・ラバーズ', '江國香織', 'natsu.txt'],
     ['アグアスカリエンテス', '井ノ森典恵', 'agua.txt']
 ];
 
 //BGMの変数
 var bgm;
-var bgmSwitch = 0;　//BGMを再生タイミングに使用する
+var bgmSwitch = 1;　//BGMを再生タイミングに使用する
 
 //小説の文節を格納する配列
 var phrase;
@@ -81,7 +82,7 @@ var myFont = "Sawarabi Mincho";
 var tHeight; //テキストの高さを格納する変数
 var tWidth; //テキストの幅を格納する変数
 var fontSize; //fontSizeを格納するはいれつ
-var fontSizeRange = [25, 40, 60, 70, 90, 100, 140]; //fontSizeのレンジ
+var fontSizeRange = [14, 20, 25, 40, 60, 100]; //fontSizeのレンジ
 var opacity; //透明度を格納する配列
 var expandTextRandom;  //背景にExpandTextを表示するかの確率を決める配列
 var mean = 0;
@@ -110,16 +111,16 @@ var textSwitch;　//textOrderの値が増えた時に、Phrase表示に切り替
 var timeLimit;
 var timeLimitEnd;
 var timeLimitSwitch;
-var timeLimitSeconds = 5;  //この時間が経過するまではランダムなfontSizeを左が続ける
-var fontSizeAfterTimelimit = 25; //timeLimitSeconds秒だけ経過したのちはこのフォントサイズで固定
+var timeLimitSeconds = 3;  //この時間が経過するまではランダムなfontSizeを左が続ける
+var fontSizeAfterTimelimit = 12; //timeLimitSeconds秒だけ経過したのちはこのフォントサイズで固定
 
 //setupが完了したことを示す変数
 var setupFinish;
 
 //------------------ProgressBarで使用する変数------------------
-var progressbarHeight = 2.5;
-var progressbarY = 25;  //ProgressBarが画面下からどれくらいの距離に表示されるか
-var paragraphDistance = 12.5; //プログレスバーのパラグラフ間の距離
+var progressbarHeight = 1.5;
+var progressbarY = 40;  //ProgressBarが画面下からどれくらいの距離に表示されるか
+var paragraphDistance = 3; //プログレスバーのパラグラフ間の距離
 var paragraphCounter = 0; //文節の数を数える
 var noWordPosition = []; //パラグラフの区切り（文字の入っていない行の番号）を格納する配列
 
@@ -142,12 +143,13 @@ var rectColor = [];
 var rectColorSwitch = 0;
 var rectOpacity = [];
 
+//-----------------タッチ判定でする変数------------------
+var touchMoment = 0;
+var whileTouching = 0;
+
 //セリフ「」だけにボックスを表示するためのスイッチ・変数
 var covBoxSwitch = 0;
 var covBox = [];
-
-
-
 
 
 //--------------------------------------------
@@ -157,13 +159,16 @@ function preload() {
 
     //phraseに小説文を代入
     novelTitle = novelInfo[novelNumber][2];
-    phrase = loadStrings('/novel/' + novelTitle);
+    phrase = loadStrings('novel/' + novelTitle);
     //BGMを読み込み
-    bgm = loadSound('material/bgm-duke.mp3');
+    bgm = loadSound('material/duke.mp3');
 
 }
 
 function setup() {
+
+    getAudioContext().suspend();
+    bgm.loop();
 
     //画面サイズとフレームレートの設定
     Width = windowWidth;
@@ -181,6 +186,7 @@ function setup() {
     phraseNumber = phrase.length;
 
 
+    //------------------------配列を宣言------------------------
     //配列を作成
     //テキストに関する値格納する配列
     fontSize = new Array(phraseNumber);
@@ -200,7 +206,7 @@ function setup() {
     phraseBeginning = new Array(phraseNumber); //文節が初めて表示された瞬間の値を格納する配列
     switchForphraseBeginning = new Array(phraseNumber); //文節が初めて表示された瞬間のみphraseBeginningが値を記録するためのスイッチ
 
-    slicedPhrase = new Array(); //縦書きにするために文節を一文字づつ分割した値を格納する配列
+    slicedPhrase = new Array(100); //縦書きにするために文節を一文字づつ分割した値を格納する配列
     realLetterLengthForVertical = new Array(phraseNumber); //縦書きに変換したのちに、改行を除いた文字数を格納する配列
 
     moveLengthPerFrame = moveLength / (fR * duration); //単位時間ごとの文字移動スピードを計算
@@ -240,7 +246,7 @@ function setup() {
     //------------------------ProgressBarを作成するためのコード------------------------
     //progressbarY = windowHeight - progressbarHeight - screenMargin;
     //空欄の行を検索（小説の最終行には必ず「空欄の行を入れる！！！！！」
-    for (var i = 0; i < phraseNumber; i++) {
+    for (let i = 0; i < phraseNumber; i++) {
         //小説全体の文字量
         totalWordCounts = totalWordCounts + phrase[i].length;
         if (phrase[i] === '') {
@@ -249,23 +255,24 @@ function setup() {
         }
     }
     //空欄の行から次の空欄の行までの文節の文章をParagraph[]に格納するためのコード
-    for (var t = 0; t < paragraphCounter; t++) {
+    for (let t = 0; t < paragraphCounter; t++) {
         paragraph[t] = '';
         if (t === 0) {
-            for (var s = 0; s < noWordPosition[t]; s++) {
+            for (let s = 0; s < noWordPosition[t]; s++) {
                 paragraph[t] = paragraph[t] + phrase[s];
             }
         } else {
-            for (var s = noWordPosition[t - 1] + 1; s < noWordPosition[t]; s++) {
+            for (let s = noWordPosition[t - 1] + 1; s < noWordPosition[t]; s++) {
                 paragraph[t] = paragraph[t] + phrase[s];
             }
         }
     }
     //パラグラフの長方形の辺の長さを求める
-    for (var i = 0; i < paragraphCounter; i++) {
+    for (let i = 0; i < paragraphCounter; i++) {
         //パラグラフバーの縦横の長さを計算
         //paragraphRectWidth[i] = Math.round((Width - paragraphDistance * (paragraphCounter - 1) - screenMargin - 100) * paragraph[i].length / totalWordCounts);
-        paragraphRectWidth[i] = (Width - paragraphDistance * (paragraphCounter - 1) - titleWidth - titleXY * 2 - 20 * 2) * paragraph[i].length / totalWordCounts;
+        //paragraphRectWidth[i] = (Width - paragraphDistance * (paragraphCounter - 1) - titleWidth - titleXY * 2 - 20 * 2) * paragraph[i].length / totalWordCounts;
+        paragraphRectWidth[i] = (Width - paragraphDistance * (paragraphCounter - 1) - screenMarginRL * 3) * paragraph[i].length / totalWordCounts;
         paragraphRectHeight[i] = progressbarHeight;
 
         //パラグラフバーを表示する座標を計算
@@ -273,12 +280,12 @@ function setup() {
         paragraphRectX[i] = 0;
 
         if (i !== 0) {
-            for (var p = 1; p < i + 1; p++) {
+            for (let p = 1; p < i + 1; p++) {
                 paragraphRectXAdds[i] = paragraphRectXAdds[i] + paragraphRectWidth[p - 1];
             }
         }
 
-        paragraphRectX[i] = titleXY + titleWidth + 20 + paragraphRectXAdds[i] + i * paragraphDistance;
+        paragraphRectX[i] = screenMarginRL + paragraphRectXAdds[i] + i * paragraphDistance;
         paragraphRectY[i] = progressbarY;
 
         //ホワイトスペース（バーの左側のとこ）の高さをランダムに決定するコード
@@ -292,6 +299,7 @@ function setup() {
         rectOpacity[i] = 100;
 
     }
+
 
 
     //---------------一文づつ縦横を変えるためのコード---------------
@@ -310,10 +318,10 @@ function setup() {
         if (slicedPhrase1[slicedPhrase1.length - 1] === '。') {
             vhChange = 1 - vhChange;
         }
-    }*/
-
+    }
+    */
     //---------------ランダムに縦横を変えるためのコード---------------
-    for (var s = 0; s < phraseNumber; s++) {
+    for (let s = 0; s < phraseNumber; s++) {
         vhChange = random(0, 1);
 
         if (vhChange < 0.5) {
@@ -322,7 +330,6 @@ function setup() {
             vhSwitch[s] = 1;
         }
     }
-
     //---------------台詞だけにボックスを表示するためのコード---------------
     for (var s = 0; s < phraseNumber; s++) {
 
@@ -343,8 +350,9 @@ function setup() {
 
 
 
+
     //--------------------------------初期設定を開始する--------------------------------
-    for (var i = 0; i < phraseNumber; i++) {
+    for (let i = 0; i < phraseNumber; i++) {
 
         //テキストを大きくするかを決める乱数を格納する
         expandTextRandom[i] = abs(randomGaussian(mean, sd));
@@ -410,18 +418,16 @@ function setup() {
 
             //句読点を取り出すためのコード（文末のもの）
             if (slicedPhrase[slicedPhrase.length - 1] === '、' || slicedPhrase[slicedPhrase.length - 1] === '。') {
-
                 if (slicedPhrase[slicedPhrase.length - 1] === '。') {
                     punctuationSwitchSub[i] = 1;
                 }
-
                 punctuation[i] = slicedPhrase[slicedPhrase.length - 1];
                 punctuationSwitch[i] = 1;
                 slicedPhrase.pop();
             }
 
             //「」を取り出すためのコード
-            for (var t = 0; t < slicedPhrase.length; t++) {
+            for (let t = 0; t < slicedPhrase.length; t++) {
                 if (slicedPhrase[t] === '「') {
                     punctuationUpper[i][t] = slicedPhrase[t];
                     slicedPhrase[t] = '　';
@@ -435,7 +441,7 @@ function setup() {
             }
 
             //句読点を取り出すためのコード（文中のもの）  
-            for (var t = 0; t < slicedPhrase.length - 1; t++) {
+            for (let t = 0; t < slicedPhrase.length - 1; t++) {
                 if (slicedPhrase[t] === '、' || slicedPhrase[t] === '。') {
                     punctuationInner[i][t] = slicedPhrase[t];
                     slicedPhrase[t] = '　'
@@ -446,7 +452,7 @@ function setup() {
             }
 
             //'ー''='（文中のもの）  
-            for (var t = 0; t < slicedPhrase.length - 1; t++) {
+            for (let t = 0; t < slicedPhrase.length - 1; t++) {
                 if (slicedPhrase[t] === 'ー' || slicedPhrase[t] === '＝') {
                     punctuationLine[i][t] = slicedPhrase[t];
                     slicedPhrase[t] = '　'
@@ -458,33 +464,22 @@ function setup() {
 
 
             //一文字づつの間に改行をいれる処理
-            for (var t = 0; t < slicedPhrase.length; t++) {
+            for (let t = 0; t < slicedPhrase.length; t++) {
                 if (t !== slicedPhrase.length - 1) {
                     slicedPhrase[t] = slicedPhrase[t] + '\n';
                 }
                 stickedPhrase = stickedPhrase + slicedPhrase[t];
             }
-
             phrase[i] = stickedPhrase;
             stickedPhrase = '';
             //縦書きの行の改行を文字数にカウントしないための計算
             realLetterLengthForVertical[i] = phrase[i].length - (phrase[i].length - 1) / 2;
-
         } else {
             slicedPhrase = split(phrase[i], '');
+
             //句読点を取り出すためのコード（文末のもの）
             if (slicedPhrase[slicedPhrase.length - 1] === '、' || slicedPhrase[slicedPhrase.length - 1] === '。') {
                 punctuationSwitch[i] = 1;
-            }
-
-            //「」を取り出すためのコード
-            for (var t = 0; t < slicedPhrase.length; t++) {
-                if (slicedPhrase[t] === '「') {
-                    punctuationUpperCovSwitch[i] = 2;
-                }
-                if (slicedPhrase[t] === '」') {
-                    punctuationLowerCovSwitch[i] = 3;
-                }
             }
         }
 
@@ -514,10 +509,10 @@ function setup() {
                         tWidth = textWidth(str(phrase[i].charAt(0)));
                         textLeading(fontSize[i]);
 
-                        phraseX[i] = random(screenMargin, Width);
-                        checkXHorizontal[i] = phraseX[i] + (tWidth * phrase[i].length + 2) + moveLength + screenMargin;
-                        phraseY[i] = random(screenMargin, Height);
-                        checkYHorizontal[i] = phraseY[i] + tHeight + 2 + screenMargin;
+                        phraseX[i] = random(screenMarginRL, Width);
+                        checkXHorizontal[i] = phraseX[i] + (tWidth * phrase[i].length + 2) + moveLength + screenMarginRL;
+                        phraseY[i] = random(screenMarginTB, Height);
+                        checkYHorizontal[i] = phraseY[i] + tHeight + 2 + screenMarginTB;
 
                     }
                     if (checkXHorizontal[i] < Width && checkYHorizontal[i] < Height) {
@@ -553,10 +548,10 @@ function setup() {
                         textLeading(fontSize[i]);
 
                         //文の開始位置の値を計算
-                        phraseX[i] = random(screenMargin, Width);
-                        checkXVertical[i] = phraseX[i] + (tWidth + 2) + screenMargin;
-                        phraseY[i] = random(screenMargin, Height);
-                        checkYVertical[i] = phraseY[i] + ((tWidth + letterSpace) * realLetterLengthForVertical[i] + 2) + moveLength + screenMargin;
+                        phraseX[i] = random(screenMarginRL, Width);
+                        checkXVertical[i] = phraseX[i] + (tWidth + 2) + screenMarginRL;
+                        phraseY[i] = random(screenMarginTB, Height);
+                        checkYVertical[i] = phraseY[i] + ((tWidth + letterSpace) * realLetterLengthForVertical[i] + 2) + moveLength + screenMarginTB;
 
                     }
                     //文章の開始位置が画面外にはみ出さない値か検証
@@ -584,22 +579,42 @@ function draw() {
 
     background(255);
     smooth();
-    print(punctuationInner[5][3]);
 
     //-------------------------------タイトルを表示-------------------------------
     fill(0);
     textSize(titleSize);
     text(novelInfo[novelNumber][0], titleXY, titleXY);
     textSize(12.5);
-    text(novelInfo[novelNumber][1], 12, 37);
+    text(novelInfo[novelNumber][1], autherXY + titleWidth + 15, autherXY + 9);
     //noFill();
     //stroke(10);
     //rect(0, 0, 100, screenMargin);
 
-
-
+    //-------------------------------タッチされたか判別-------------------------------
+    /*
+        if (touches.length > 0) {
+            if (whileTouching === 0) {
+                touchMoment = 1;
+                whileTouching = 1 - whileTouching;
+            }
+        } else if (touches.length === 0) {
+            whileTouching = 0;
+        }
+    
+        if (touchMoment === 1) {
+            
+                textSwitch[textOrder] = 1;
+                textOrder = textOrder + 1;
+    
+                progressBarSwitch = 1;
+                rectColorSwitch = 1;
+            
+                touchMoment = 0;
+    
+        }
+    */
     //-------------------------------文章を表示していくコード-------------------------------
-    for (var i = 0; i < phraseNumber; i++) {
+    for (let i = 0; i < phraseNumber; i++) {
         //print(realLetterLengthForVertical[9]);
         //print(punctuationInnerSwitch[i]);
 
@@ -644,34 +659,34 @@ function draw() {
                 if (vhSwitch[i] === 0) {
                     if (phrase[i].length != 0) {
 
+
                         //大きい文字エフェクトを入れるかどうか
                         if (expandTextRandom[i] > 0.8 && covBox[i] !== 1) {
-                            textFont(myFont, fontSize[i] * 7);
+                            textFont(myFont, fontSize[i] * 4);
                             tHeight = textAscent() + textDescent();
                             tWidth = textWidth(str(phrase[i].charAt(0)));
                             textLeading(fontSize[i]);
                             fill(240, opacity[i])
-                            text(phrase[i], phraseX[i] - 100, phraseY[i] - 100, tWidth * phrase[i].length + 10, tHeight + 10);
+                            text(phrase[i], phraseX[i] - tWidth/2, phraseY[i] - tWidth*3/8, tWidth * phrase[i].length + 2, tHeight + 2);
                             fill(0, opacity[i]);
                         } else {
                             fill(150, opacity[i]);
                         }
+                        
 
                         textFont(myFont, fontSize[i]);
                         tHeight = textAscent() + textDescent();
                         tWidth = textWidth(str(phrase[i].charAt(0)));
                         textLeading(fontSize[i]);
 
-                        phraseX[i] = phraseX[i] + moveLengthPerFrame;
-
-                        //センター表示のときとの違い
-                        if (covBox[i] === 1) {
+                        //コメントボックスを表示するコード
+                         if (covBox[i] === 1) {
 
                             //phraseX[i] = Width / 2 - (tWidth * phrase[i].length) / 2;
                             //phraseY[i] = height / 2 - tWidth / 2;
                             fill(255, opacity[i]);
                             stroke(150, opacity[i]);
-                            strokeWeight(2);
+                            strokeWeight(0.5);
                             if (punctuationSwitch[i] === 0) {
                                 rect(phraseX[i] - tWidth/1.7, phraseY[i] - tWidth*0.8, tWidth * phrase[i].length + tWidth, tHeight + tWidth);
                             } else {
@@ -683,10 +698,14 @@ function draw() {
                         }
 
 
+                        //テキストを表示するコード
                         fill(150, opacity[i]);
                         text(phrase[i], phraseX[i], phraseY[i], tWidth * phrase[i].length + 2, tHeight + 2);
                         textAlign(LEFT, TOP);
-                        //phraseX[i] = phraseX[i] + moveLengthPerFrame;
+
+                        //テキストを動かすためのコード
+                        phraseX[i] = phraseX[i] + moveLengthPerFrame;
+
                         //rect(phraseX[i], phraseY[i], tWidth*phrase[i].length + 2, tHeight);
                     }
 
@@ -700,34 +719,14 @@ function draw() {
                         tWidth = textWidth(str(phrase[i].charAt(0)));
                         textLeading(fontSize[i]);
 
-                        phraseY[i] = phraseY[i] + moveLengthPerFrame;
-
-                        /*if (placeInCenterSwitch[i] < 0.7 || punctuationSwitchSub[i] === 0) {
-                            phraseY[i] = phraseY[i] + moveLengthPerFrame;
-                        } else if (placeInCenterSwitch[i] >= 0.7 && punctuationSwitchSub[i] === 1) {
-                            phraseX[i] = Width / 2 - tWidth / 2;
-                            phraseY[i] = Height / 2 - (tWidth * realLetterLengthForVertical[i]) / 2;
-                            fill(255, opacity[i]);
-                            stroke(150, opacity[i]);
-                            strokeWeight(2);
-                            if (punctuationSwitch[i] === 0) {
-                                rect(phraseX[i] - tWidth / 1.5, phraseY[i] - tWidth / 4, tWidth + tWidth, tWidth * realLetterLengthForVertical[i] + tWidth);
-                            } else {
-                                rect(phraseX[i] - tWidth / 2, phraseY[i] - tWidth / 1.5, tWidth + tWidth, tWidth * realLetterLengthForVertical[i] + tWidth*2);
-                            }
-                            noStroke();
-                            fill(150, opacity[i]);
-                            //textAlign(CENTER, CENTER);
-                        }*/
-
-                        //箱の中
+                        
+                        //コメントボックスを表示するコード
                         if (covBox[i] === 1) {
-
                             //phraseX[i] = Width / 2 - tWidth / 2;
                             //phraseY[i] = Height / 2 - (tWidth * realLetterLengthForVertical[i]) / 2;
                             fill(255, opacity[i]);
                             stroke(150, opacity[i]);
-                            strokeWeight(2);
+                            strokeWeight(0.5);
                             if (punctuationSwitch[i] === 0) {
                                 rect(phraseX[i] - tWidth, phraseY[i] - tWidth / 2, tWidth + tWidth*2, tWidth * realLetterLengthForVertical[i] + tWidth);
                             } else {
@@ -736,8 +735,8 @@ function draw() {
                             noStroke();
                             fill(150, opacity[i]);
                             //textAlign(CENTER, CENTER);
-
                         }
+                        
 
 
                         //大きな文字を表示する際のコード
@@ -746,10 +745,10 @@ function draw() {
                             tHeight = textAscent() + textDescent();
                             tWidth = textWidth(str(phrase[i].charAt(0)));
                             textLeading(fontSize[i] * 4);
-                            fill(240, opacity[i]);
+                            fill(240, opacity[i])
 
                             //大文字の文節を表示する
-                            text(phrase[i], phraseX[i] - 100, phraseY[i] - 100, tWidth + 10, (tWidth + 2) * realLetterLengthForVertical[i] + 10);
+                            text(phrase[i], phraseX[i] - tWidth*3/7, phraseY[i] - tWidth/2, tWidth + 2, (tWidth + 2) * realLetterLengthForVertical[i] + 2);
 
                             //句読点のためのコード
                             //。、のとき
@@ -786,7 +785,7 @@ function draw() {
                                         print('helloooooooooo');
                                         push();
                                         //translate(phraseX[i] + tWidth/2 , phraseY[i] + s * tWidth - tWidth/2);
-                                        translate(phraseX[i] + tWidth * 1.01, phraseY[i] + (s - 0.05) * tWidth);
+                                        translate(phraseX[i] + tWidth * 1.01, phraseY[i] + (s - 0.2) * tWidth);
                                         //translate(100, 100);
                                         rotate(PI * 3 / 2);
                                         text(punctuationLine[i][s], -tWidth, -tWidth, tWidth + 10, tWidth + 10);
@@ -809,6 +808,9 @@ function draw() {
 
                         fill(150, opacity[i]);
                         text(phrase[i], phraseX[i], phraseY[i], tWidth + 5, (tWidth + 2) * realLetterLengthForVertical[i] + 5);
+                        
+                         //テキストを動かすためのコード
+                        phraseY[i] = phraseY[i] + moveLengthPerFrame;
 
                         //句読点のためのコード
                         //。、のとき
@@ -818,21 +820,21 @@ function draw() {
                         }
                         //「のとき
                         if (punctuationUpperCovSwitch[i] === 2) {
-                            for (var s = 0; s < phrase[i].length; s++) {
+                            for (let s = 0; s < phrase[i].length; s++) {
                                 text(punctuationUpper[i][s], phraseX[i] - tWidth * 0.75, phraseY[i] + (s + 0.65) * tWidth * 3 / 4, tWidth + 10, tWidth + 10);
                             }
                         }
 
                         //」のとき
                         if (punctuationLowerCovSwitch[i] === 3) {
-                            for (var s = 0; s < phrase[i].length; s++) {
+                            for (let s = 0; s < phrase[i].length; s++) {
                                 text(punctuationLower[i][s], phraseX[i] + tWidth * 0.75, phraseY[i] + (s - 0.65) * tWidth, tWidth + 10, tWidth + 10);
                             }
                         }
 
                         //文中の。、
                         if (punctuationInnerSwitch[i] === 4) {
-                            for (var s = 0; s < phrase[i].length; s++) {
+                            for (let s = 0; s < phrase[i].length; s++) {
                                 if (punctuationInner[i][s] === '、' || punctuationInner[i][s] === '。') {
                                     text(punctuationInner[i][s], phraseX[i] + tWidth * 2 / 3, phraseY[i] + (s - 0.3) * tWidth, tWidth + 10, tWidth + 10);
                                 }
@@ -840,12 +842,12 @@ function draw() {
                         }
                         //文中の'ー''＝'
                         if (punctuationLineSwitch[i] === 5) {
-                            for (var s = 0; s < phrase[i].length; s++) {
+                            for (let s = 0; s < phrase[i].length; s++) {
                                 if (punctuationLine[i][s] === 'ー' || punctuationLine[i][s] === '＝') {
                                     print('helloooooooooo');
                                     push();
                                     //translate(phraseX[i] + tWidth/2 , phraseY[i] + s * tWidth - tWidth/2);
-                                    translate(phraseX[i] + tWidth * 1.01, phraseY[i] + (s - 0.05) * tWidth);
+                                    translate(phraseX[i] + tWidth * 0.8, phraseY[i] + (s + 0.25) * tWidth);
                                     //translate(100, 100);
                                     rotate(PI * 3 / 2);
                                     text(punctuationLine[i][s], -tWidth, -tWidth, tWidth + 10, tWidth + 10);
@@ -861,14 +863,15 @@ function draw() {
             }
         }
     }
+    
 
     //-------------------------------ProgressBarを表示するコード-------------------------------
     //if (progressBarSwitch === 1) {
-    for (var i = 0; i < paragraphCounter; i++) {
+    for (let i = 0; i < paragraphCounter; i++) {
 
         if (i === 0) {
             if (0 <= textOrder && textOrder <= noWordPosition[i]) {
-                if (keyCode === ENTER && rectColorSwitch === 1) {
+                if (/*keyCode === ENTER &&*/ rectColorSwitch === 1) {
                     //rectColor[i] = rectColor[i] + (50 / (noWordPosition[i] + 1));
                     rectColor[i] = 150;
                     rectColorSwitch = 0;
@@ -878,7 +881,7 @@ function draw() {
             }
         } else {
             if (noWordPosition[i - 1] + 1 <= textOrder && textOrder <= noWordPosition[i]) {
-                if (keyCode === ENTER && rectColorSwitch == 1) {
+                if (/*keyCode === ENTER &&*/ rectColorSwitch == 1) {
                     //rectColor[i] = rectColor[i] + (50 / (noWordPosition[i] - noWordPosition[i - 1]));
                     rectColor[i] = 150;
                     rectColorSwitch = 0;
@@ -897,21 +900,34 @@ function draw() {
 
 
 
-function keyPressed() {
+
+
+function touchStarted() {
 
     if (setupFinish === 1) {
-        if (keyCode === ENTER) {
-            textSwitch[textOrder] = 1;
-            textOrder = textOrder + 1;
 
-            progressBarSwitch = 1;
-            rectColorSwitch = 1;
-        }
+        textSwitch[textOrder] = 1;
+        textOrder = textOrder + 1;
 
-        /*if (KeyCode === SPACE) {
-        }*/
-
+        progressBarSwitch = 1;
+        rectColorSwitch = 1;
+    }
+    if (bgmSwitch === 1) {
+        userStartAudio();
+        bgmSwitch = 0;
     }
 }
+
+
+
+
+// do this prevent default touch interaction
+function mousePressed() {
+    return false;
+}
+
+document.addEventListener('gesturestart', function (e) {
+    e.preventDefault();
+});
 
 
